@@ -1,5 +1,7 @@
 ## Import libraries
+import numpy as np
 import pandas as pd
+import altair as alt
 
 ## Read in quintile data
 # I made a csv of table F-1: https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-families.html
@@ -32,14 +34,9 @@ hist_income = hist_income.astype(type_dict)
 # Average of years with multiple values
 # See linked footnotes above - two slightly different methods available for each year
 hist_income = hist_income.groupby(['Year']).mean() #this also turns year into my index, which is convenient for later applying changes to all columns except year
-
-print(hist_income.head())
-
 hist_income = hist_income.pct_change() #percent change
 hist_income = hist_income.dropna() #filter out the first year since it's NA for percent change
 hist_income = hist_income.apply(lambda x: x * 100) # multiply by 100 for convenience
-
-print(hist_income.head())
 
 ## Pull in presidential data
 pres = pd.read_csv("pres_year.csv")
@@ -63,25 +60,44 @@ pres = pres.set_index("Year")
 # Join datasets
 df = pres.join(hist_income) #join is for joining on index, merge is for merging on columns
 
-print(df.head())
+# make a lagged dataframe to give each president a 1 year lag before their economic policy kicks in. 
+pres_lag = pres.shift(periods = -1)
+df_lag = pres_lag.join(hist_income)
 
-# make a lagged dataframe
 
 # transform data from wide to long
 df = pd.melt(df, id_vars = ['Democrat'], value_vars =['20', '40', '60', '80', '95'], ignore_index = False, var_name = "Percentile", value_name = "Growth")
+df_lag = pd.melt(df_lag, id_vars = ['Democrat'], value_vars =['20', '40', '60', '80', '95'], ignore_index = False, var_name = "Percentile", value_name = "Growth")
 
-print(df.head())
 
 # Plot data in altair
-import altair as alt
+df['Party'] = np.where(df['Democrat']== True, 'Dem', 'Rep')
+df_lag['Party'] = np.where(df_lag['Democrat']== True, 'Dem', 'Rep')
 
+#set up for colors
+domain = ['Dem', 'Rep']
+range_ = ['blue', 'red']
+
+#Unlagged chart
 chart = alt.Chart(df).mark_bar().encode(
-    x = 'Democrat',
-    y = 'mean(Growth)',
-    color = 'Democrat',
+    alt.X('Party', title = ""),
+    alt.Y('mean(Growth)', title = "Percent Growth"),
+    color = alt.Color('Party', scale = alt.Scale(domain = domain, range = range_)),
     column = 'Percentile'
+).properties(
+    title = 'Avg Annual Income Growth, 1947-2019'
 )
+chart.save("pres.html")
 
-chart.save("test_alt.html")
+#Unlagged chart
+chart_lag = alt.Chart(df_lag).mark_bar().encode(
+    alt.X('Party', title = ""),
+    alt.Y('mean(Growth)', title = "Percent Growth"),
+    color = alt.Color('Party', scale = alt.Scale(domain = domain, range = range_)),
+    column = 'Percentile'
+).properties(
+    title = 'Avg Annual Income Growth, 1947-2019, 1 year lag'
+)
+chart_lag.save("pres_lag.html")
 
 # save data as images https://altair-viz.github.io/user_guide/saving_charts.html
