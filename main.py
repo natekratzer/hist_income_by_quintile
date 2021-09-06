@@ -44,9 +44,44 @@ print(hist_income.head())
 ## Pull in presidential data
 pres = pd.read_csv("pres_year.csv")
 
+pres["Year"] = pd.to_datetime(pres["Year"], format = "%Y") # need to manually convert because going straight from int to date causes issues
+
+# Dictionary to retype columns
+type_dict_pres = {
+    "Year"  : "datetime64[ns]", 
+    "President"  : "string",
+    "Term" : "string",
+    "Democrat" : "bool",
+    "Second Term" : "bool"
+}
+
+# Change data types
+pres = pres.astype(type_dict_pres)
+
+pres = pres.set_index("Year")
+
 # Join datasets
-df = pd.merge(hist_income, pres, )
+df = pres.join(hist_income) #join is for joining on index, merge is for merging on columns
+
+print(df.head())
+
+# make a lagged dataframe
+
+# transform data from wide to long
+df = pd.melt(df, id_vars = ['Democrat'], value_vars =['20', '40', '60', '80', '95'], ignore_index = False, var_name = "Percentile", value_name = "Growth")
+
+print(df.head())
 
 # Plot data in altair
+import altair as alt
+
+chart = alt.Chart(df).mark_bar().encode(
+    x = 'Democrat',
+    y = 'mean(Growth)',
+    color = 'Democrat',
+    column = 'Percentile'
+)
+
+chart.save("test_alt.html")
 
 # save data as images https://altair-viz.github.io/user_guide/saving_charts.html
