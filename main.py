@@ -89,7 +89,7 @@ chart = alt.Chart(df).mark_bar().encode(
 )
 chart.save("pres.html")
 
-#Unlagged chart
+#Lagged chart
 chart_lag = alt.Chart(df_lag).mark_bar().encode(
     alt.X('Party', title = ""),
     alt.Y('mean(Growth)', title = "Percent Growth"),
